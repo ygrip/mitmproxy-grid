@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mitmproxy Grid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg-0:#0b1120;--bg-1:#111827;--bg-2:#1f2937;--bg-3:#374151;
+      --border:#4b5563;--border-s:rgba(75,85,99,.45);
+      --t1:#f9fafb;--t2:#d1d5db;--t3:#9ca3af;--t4:#6b7280;
+      --accent:#3b82f6;--accent-h:#2563eb;--accent-s:rgba(59,130,246,.12);
+      --green:#22c55e;--green-bg:rgba(34,197,94,.12);
+      --red:#ef4444;--red-bg:rgba(239,68,68,.1);
+      --yellow:#eab308;--yellow-bg:rgba(234,179,8,.1);
+      --r:8px;--rl:12px;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.25);
+      --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+    }
+    html{font-size:14px}
+    body{font-family:var(--font);background:var(--bg-0);color:var(--t1);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+    .hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--bg-1);border-bottom:1px solid var(--border-s)}
+    .hdr-l{display:flex;align-items:center;gap:10px}
+    .hdr-l h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+    .logo{color:var(--accent);font-size:20px}
+    .hdr-r{display:flex;align-items:center;gap:16px;font-size:13px;color:var(--t3)}
+    .hdr-r a{color:var(--t3);text-decoration:none;transition:color .15s}
+    .hdr-r a:hover{color:var(--accent)}
+    .conn{display:flex;align-items:center;gap:6px}
+    .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .dot-up{background:var(--green);box-shadow:0 0 6px var(--green)}
+    .dot-dn{background:var(--red);box-shadow:0 0 6px var(--red)}
+    .dot-un{background:var(--t4)}
+
+    .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:14px;padding:22px 28px 0}
+    .card{background:var(--bg-1);border:1px solid var(--border-s);border-radius:var(--rl);padding:16px 18px;transition:border-color .2s}
+    .card:hover{border-color:var(--border)}
+    .card .lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--t4);margin-bottom:6px}
+    .card .val{font-size:24px;font-weight:700;line-height:1.1;display:flex;align-items:center;gap:8px}
+
+    .main{padding:22px 28px 40px}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+    .toolbar h2{font-size:15px;font-weight:600;white-space:nowrap}
+    .toolbar-r{display:flex;align-items:center;gap:10px}
+    .search{padding:7px 12px;background:var(--bg-2);border:1px solid var(--border-s);border-radius:var(--r);color:var(--t1);font-family:var(--font);font-size:13px;width:300px;transition:border-color .15s}
+    .search:focus{outline:none;border-color:var(--accent)}.search::placeholder{color:var(--t4)}
+
+    .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:var(--r);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+    .btn:active{transform:scale(.97)}
+    .btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-h)}
+    .btn-d{background:var(--red-bg);color:var(--red);border:1px solid transparent}.btn-d:hover{border-color:var(--red)}
+    .btn-g{background:transparent;color:var(--t3);border:1px solid var(--border-s)}.btn-g:hover{background:var(--bg-2);color:var(--t1)}
+    .btn-sm{padding:4px 10px;font-size:12px}
+    .btn:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
+
+    .tw{border:1px solid var(--border-s);border-radius:var(--rl);overflow:hidden;background:var(--bg-1)}
+    table{width:100%;border-collapse:collapse}
+    thead th{text-align:left;padding:10px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--t4);background:var(--bg-2);border-bottom:1px solid var(--border-s)}
+    th.sort{cursor:pointer;user-select:none;transition:color .15s}
+    th.sort:hover{color:var(--accent)}
+    .sa{font-size:10px;margin-left:3px;color:var(--accent)}
+    tbody td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border-s)}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover{background:var(--accent-s)}
+    .iid{font-family:var(--mono);font-size:12px;color:var(--accent);cursor:pointer}.iid:hover{text-decoration:underline}
+    .port{font-family:var(--mono);font-weight:600}
+    .badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600}
+    .badge-running{background:var(--green-bg);color:var(--green)}
+    .badge-stopped{background:var(--red-bg);color:var(--red)}
+    .badge-error{background:var(--yellow-bg);color:var(--yellow)}
+    .acts{display:flex;gap:4px;flex-wrap:wrap}
+    .empty{text-align:center;padding:48px 20px;color:var(--t4)}.empty p{margin-top:6px;font-size:13px}
+    .ttl-ok{color:var(--green)}.ttl-warn{color:var(--yellow)}.ttl-low{color:var(--red);font-weight:600}
+    .clip{font-family:var(--mono);font-size:11px;color:var(--t3);cursor:default}
+
+    /* pagination */
+    .pag{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;font-size:12px;color:var(--t3);border-top:1px solid var(--border-s);background:var(--bg-1)}
+    .pag-l,.pag-r{display:flex;align-items:center;gap:8px}
+    .pag select{padding:3px 6px;background:var(--bg-2);border:1px solid var(--border-s);border-radius:var(--r);color:var(--t1);font-size:12px}
+    .pag-info{white-space:nowrap}
+
+    /* panel */
+    .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;opacity:0;visibility:hidden;transition:all .25s}
+    .ov.open{opacity:1;visibility:visible}
+    .pnl{position:fixed;top:0;right:0;width:560px;max-width:100vw;height:100vh;background:var(--bg-1);border-left:1px solid var(--border-s);z-index:101;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+    .pnl.open{transform:translateX(0)}
+    .pnl-h{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border-s)}
+    .pnl-h h3{font-size:15px;font-weight:600}
+    .pnl-h small{display:block;font-size:11px;color:var(--t4);font-family:var(--mono);margin-top:2px;word-break:break-all}
+    .pnl-b{flex:1;overflow-y:auto;padding:20px 22px}
+
+    .rc{background:var(--bg-0);border:1px solid var(--border-s);border-radius:var(--r);padding:14px;margin-bottom:10px;transition:border-color .15s}
+    .rc:hover{border-color:var(--border)}
+    .rc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .rc-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-top:8px;margin-bottom:2px}
+    .rc-d{font-size:12px;color:var(--t3);margin-bottom:3px}.rc-d span{color:var(--t2);font-family:var(--mono);font-size:11px}
+
+    .divider{border:none;border-top:1px solid var(--border-s);margin:22px 0}
+    .fg{margin-bottom:12px}
+    .fg label{display:block;font-size:12px;font-weight:500;color:var(--t3);margin-bottom:4px}
+    .fg input,.fg select,.fg textarea{width:100%;padding:7px 10px;background:var(--bg-0);border:1px solid var(--border-s);border-radius:var(--r);color:var(--t1);font-family:var(--font);font-size:13px;transition:border-color .15s}
+    .fg textarea{font-family:var(--mono);font-size:12px;resize:vertical}
+    .fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--accent)}
+    .fg input::placeholder,.fg textarea::placeholder{color:var(--t4)}
+    .fr{display:flex;gap:10px}.fr .fg{flex:1}
+
+    .fs{margin-bottom:4px}
+    .fs>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--t2);padding:7px 0;list-style:none;display:flex;align-items:center;gap:6px;user-select:none}
+    .fs>summary::-webkit-details-marker{display:none}
+    .fs>summary>.ch{display:inline-block;font-size:10px;transition:transform .15s}
+    .fs[open]>summary>.ch{transform:rotate(90deg)}
+    .fs .sb{padding:4px 0 8px}
+
+    .toasts{position:fixed;top:16px;right:16px;z-index:300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+    .toast{padding:11px 18px;border-radius:var(--r);font-size:13px;font-weight:500;pointer-events:auto;animation:tIn .3s ease,tOut .3s ease 2.7s forwards;max-width:380px;box-shadow:var(--shadow)}
+    .toast-success{background:var(--green);color:#fff}
+    .toast-error{background:var(--red);color:#fff}
+    .toast-info{background:var(--accent);color:#fff}
+    @keyframes tIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+    @keyframes tOut{to{opacity:0;transform:translateY(-8px)}}
+  </style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l"><span class="logo">◆</span><h1>mitmproxy Grid</h1></div>
+  <div class="hdr-r">
+    <a href="/docs" target="_blank">Swagger</a>
+    <a href="/redoc" target="_blank">ReDoc</a>
+    <a href="/openapi.json" target="_blank" download="openapi.json">Contract&nbsp;↓</a>
+    <span class="conn"><span class="dot dot-un" id="cd"></span><span id="cl">Connecting…</span></span>
+  </div>
+</header>
+
+<section class="stats">
+  <div class="card"><div class="lbl">Status</div><div class="val" id="s-st">—</div></div>
+  <div class="card"><div class="lbl">Active Instances</div><div class="val" id="s-in">0</div></div>
+  <div class="card"><div class="lbl">Available Slots</div><div class="val" id="s-av">—</div></div>
+  <div class="card"><div class="lbl">Port Range</div><div class="val" id="s-pr">—</div></div>
+  <div class="card"><div class="lbl">Default TTL</div><div class="val" id="s-ttl">—</div></div>
+</section>
+
+<section class="main">
+  <div class="toolbar">
+    <h2>Instances</h2>
+    <div class="toolbar-r">
+      <input class="search" type="text" id="q" placeholder="Filter by ID, port, or client IP…" oninput="onSearch(this.value)">
+      <button class="btn btn-p" id="btn-c" onclick="createInstance()">+ New Instance</button>
+    </div>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr>
+        <th>Instance ID</th>
+        <th class="sort" onclick="toggleSort('port')">Port<span id="sh-port" class="sa"></span></th>
+        <th>Status</th>
+        <th class="sort" onclick="toggleSort('uptime')">Uptime<span id="sh-uptime" class="sa"></span></th>
+        <th class="sort" onclick="toggleSort('remaining')">Remaining<span id="sh-remaining" class="sa"></span></th>
+        <th>Rules</th>
+        <th class="sort" onclick="toggleSort('clients')">Clients<span id="sh-clients" class="sa"></span></th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+    <div class="pag" id="pag"></div>
+  </div>
+</section>
+
+<!-- rule panel -->
+<div class="ov" id="ov" onclick="closePanel()"></div>
+<aside class="pnl" id="pnl">
+  <div class="pnl-h">
+    <div>
+      <h3 id="pt">Rules</h3>
+      <small id="pid"></small>
+      <small id="p-clients" style="color:var(--t3);margin-top:4px"></small>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn btn-g btn-sm" onclick="downloadCert()">⤓ Cert</button>
+      <button class="btn btn-g btn-sm" onclick="closePanel()">✕</button>
+    </div>
+  </div>
+  <div class="pnl-b">
+    <div id="rl"></div>
+    <hr class="divider">
+    <div style="font-size:14px;font-weight:600;margin-bottom:14px;">Add New Rule</div>
+    <form id="rf" onsubmit="submitRule(event)">
+      <details class="fs" open>
+        <summary><span class="ch">▶</span> Match Criteria</summary>
+        <div class="sb">
+          <div class="fg"><label>URL Contains</label><input name="urlContains" placeholder="e.g. api.example.com"></div>
+          <div class="fg"><label>URL Pattern (regex)</label><input name="urlPattern" placeholder="e.g. .*\\/api\\/v[0-9]+\\/.*"></div>
+          <div class="fr">
+            <div class="fg"><label>HTTP Method</label><select name="method"><option value="">Any</option><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option><option>PATCH</option></select></div>
+            <div class="fg"><label>Priority</label><input type="number" name="priority" value="0"></div>
+          </div>
+          <div class="fr">
+            <div class="fg"><label>Content-Type (req)</label><input name="contentType" placeholder="application/json"></div>
+            <div class="fg"><label>Content-Type (res)</label><input name="responseContentType" placeholder="text/html"></div>
+          </div>
+        </div>
+      </details>
+      <details class="fs">
+        <summary><span class="ch">▶</span> Modify Request</summary>
+        <div class="sb">
+          <div class="fg"><label>Headers to Set</label><textarea name="reqHSet" rows="2" placeholder="Header-Name: value&#10;Another: value"></textarea></div>
+          <div class="fg"><label>Headers to Remove</label><input name="reqHRem" placeholder="Cookie, X-Tracking"></div>
+          <div class="fr">
+            <div class="fg"><label>Params to Set</label><textarea name="reqPSet" rows="2" placeholder="key=value&#10;debug=true"></textarea></div>
+            <div class="fg"><label>Params to Remove</label><input name="reqPRem" placeholder="tracking_id, utm_source"></div>
+          </div>
+          <div class="fg"><label>Replace Entire Body</label><textarea name="reqBody" rows="2" placeholder="Full request body replacement"></textarea></div>
+          <div class="fr">
+            <div class="fg"><label>Body Find</label><input name="reqBF" placeholder="Substring to find"></div>
+            <div class="fg"><label>Body Replace</label><input name="reqBR" placeholder="Replacement"></div>
+          </div>
+        </div>
+      </details>
+      <details class="fs" open>
+        <summary><span class="ch">▶</span> Modify Response</summary>
+        <div class="sb">
+          <div class="fg"><label>Status Code</label><input type="number" name="resSC" placeholder="e.g. 200"></div>
+          <div class="fg"><label>Headers to Set</label><textarea name="resHSet" rows="2" placeholder="X-Custom: value&#10;Cache-Control: no-cache"></textarea></div>
+          <div class="fg"><label>Headers to Remove</label><input name="resHRem" placeholder="X-Powered-By, Server"></div>
+          <div class="fg"><label>Replace Entire Body</label><textarea name="resBody" rows="3" placeholder='{"mocked": true}'></textarea></div>
+          <div class="fr">
+            <div class="fg"><label>Body Find</label><input name="resBF" placeholder="Substring to find"></div>
+            <div class="fg"><label>Body Replace</label><input name="resBR" placeholder="Replacement"></div>
+          </div>
+        </div>
+      </details>
+      <button type="submit" class="btn btn-p" style="width:100%">+ Add Rule</button>
+    </form>
+  </div>
+</aside>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ── state ─────────────────────────────────────────── */
+const S={health:null,instances:[],selId:null,selRules:[]};
+const PG={size:10,cur:0,sort:'port',dir:'asc',q:''};
+
+/* ── api ───────────────────────────────────────────── */
+async function api(m,p,b){
+  const o={method:m,headers:{'Content-Type':'application/json'}};
+  if(b)o.body=JSON.stringify(b);
+  const r=await fetch(p,o);
+  if(!r.ok){const e=await r.json().catch(()=>({detail:r.statusText}));throw new Error(e.detail||'Request failed');}
+  const t=await r.text();return t?JSON.parse(t):null;
+}
+
+/* ── data ──────────────────────────────────────────── */
+async function fetchAll(){
+  try{
+    const[h,i]=await Promise.all([api('GET','/health'),api('GET','/instances')]);
+    S.health=h;S.instances=i;renderStats();renderTable();setConn(true);
+  }catch(e){console.error('refresh',e);setConn(false);}
+}
+async function fetchRules(id){S.selRules=await api('GET',`/instances/${id}/rules`);}
+
+/* ── actions ───────────────────────────────────────── */
+async function createInstance(){
+  const b=document.getElementById('btn-c');b.disabled=true;b.textContent='Creating…';
+  try{const d=await api('POST','/instances');toast(`Instance created on port ${d.port} (TTL ${fmtUp(d.ttl)})`,'success');await fetchAll();}
+  catch(e){toast(e.message,'error');}
+  b.disabled=false;b.textContent='+ New Instance';
+}
+async function deleteInstance(id){
+  if(!confirm(`Destroy instance ${id.substring(0,8)}…?`))return;
+  try{await api('DELETE',`/instances/${id}`);toast('Instance destroyed','success');if(S.selId===id)closePanel();await fetchAll();}
+  catch(e){toast(e.message,'error');}
+}
+async function renewInstance(id){
+  try{const d=await api('POST',`/instances/${id}/renew`);toast(`Renewed — ${fmtUp(d.remainingSeconds)} remaining`,'success');await fetchAll();}
+  catch(e){toast(e.message,'error');}
+}
+async function addRule(id,rule){
+  await api('POST',`/instances/${id}/rules`,rule);toast('Rule added','success');
+  await fetchRules(id);renderRules();await fetchAll();
+}
+async function removeRule(id,idx){
+  await api('DELETE',`/instances/${id}/rules/${idx}`);toast('Rule removed','success');
+  await fetchRules(id);renderRules();await fetchAll();
+}
+async function toggleRuleReq(id,idx){
+  await api('PATCH',`/instances/${id}/rules/${idx}/toggle`);
+  await fetchRules(id);renderRules();
+}
+async function downloadCert(){
+  if(!S.selId)return;
+  try{
+    const r=await fetch(`/instances/${S.selId}/cert`);if(!r.ok)throw new Error('Cert not ready');
+    const t=await r.text(),a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([t],{type:'application/x-pem-file'}));
+    a.download=`mitmproxy-${S.selId.substring(0,8)}.pem`;a.click();URL.revokeObjectURL(a.href);
+  }catch(e){toast(e.message,'error');}
+}
+
+/* ── helpers ───────────────────────────────────────── */
+function setConn(ok){document.getElementById('cd').className='dot '+(ok?'dot-up':'dot-dn');document.getElementById('cl').textContent=ok?'Connected':'Disconnected';}
+function fmtUp(s){if(s<60)return Math.floor(s)+'s';if(s<3600)return Math.floor(s/60)+'m '+Math.floor(s%60)+'s';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h+'h '+m+'m';}
+function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';}
+function fmtRem(s){if(s<=0)return'<span class="ttl-low">expired</span>';const t=fmtUp(s);return s>300?`<span class="ttl-ok">${t}</span>`:s>60?`<span class="ttl-warn">${t}</span>`:`<span class="ttl-low">${t}</span>`;}
+function fmtBytes(b){if(b==null)return'?';b=Math.round(b);if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+
+/* ── filter / sort / paginate ──────────────────────── */
+function getProcessed(){
+  let list=[...S.instances];
+  if(PG.q){
+    const q=PG.q.toLowerCase();
+    list=list.filter(i=>
+      i.instanceId.toLowerCase().includes(q)||
+      String(i.port).includes(q)||
+      (i.clientIps||[]).some(ip=>ip.includes(q))
+    );
+  }
+  const d=PG.dir==='asc'?1:-1;
+  list.sort((a,b)=>{
+    let va,vb;
+    switch(PG.sort){
+      case 'port':va=a.port;vb=b.port;break;
+      case 'uptime':va=a.uptimeSeconds;vb=b.uptimeSeconds;break;
+      case 'remaining':va=a.remainingSeconds;vb=b.remainingSeconds;break;
+      case 'clients':va=(a.clientIps||[]).length;vb=(b.clientIps||[]).length;break;
+      default:va=a.port;vb=b.port;
+    }
+    return (va-vb)*d;
+  });
+  return list;
+}
+
+function toggleSort(col){
+  if(PG.sort===col){PG.dir=PG.dir==='asc'?'desc':'asc';}
+  else{PG.sort=col;PG.dir='asc';}
+  PG.cur=0;
+  renderTable();
+}
+function onSearch(v){PG.q=v;PG.cur=0;renderTable();}
+function setPage(p){PG.cur=p;renderTable();}
+function setPageSize(n){PG.size=n;PG.cur=0;renderTable();}
+
+function updateSortArrows(){
+  ['port','uptime','remaining','clients'].forEach(c=>{
+    const el=document.getElementById('sh-'+c);
+    el.textContent=PG.sort===c?(PG.dir==='asc'?' ▲':' ▼'):'';
+  });
+}
+
+/* ── render stats ──────────────────────────────────── */
+function renderStats(){
+  const h=S.health;if(!h)return;
+  document.getElementById('s-st').innerHTML=`<span class="dot ${h.status==='UP'?'dot-up':'dot-dn'}"></span>${h.status}`;
+  document.getElementById('s-in').textContent=h.instances;
+  document.getElementById('s-av').textContent=h.availableSlots;
+  document.getElementById('s-pr').textContent=h.portRange;
+  document.getElementById('s-ttl').textContent=fmtUp(h.defaultTtl);
+}
+
+/* ── render table ──────────────────────────────────── */
+function renderTable(){
+  const all=getProcessed();
+  const total=all.length;
+  const pages=Math.max(1,Math.ceil(total/PG.size));
+  if(PG.cur>=pages)PG.cur=pages-1;
+  const start=PG.cur*PG.size;
+  const page=all.slice(start,start+PG.size);
+
+  updateSortArrows();
+
+  const tb=document.getElementById('tb');
+  if(!total){
+    tb.innerHTML='<tr><td colspan="8" class="empty"><div>'+
+      (PG.q?'No instances match your filter':'No instances running')+
+      '</div><p>'+(PG.q?'Try a different search term':'Create one to get started')+'</p></td></tr>';
+  }else{
+    tb.innerHTML=page.map(i=>{
+      const ips=i.clientIps||[];
+      const ipTitle=ips.length?ips.join(', '):'No connections yet';
+      return`<tr>
+      <td><span class="iid" title="${i.instanceId}" onclick="copyId('${i.instanceId}')">${i.instanceId.substring(0,8)}…</span></td>
+      <td><span class="port">${i.port}</span></td>
+      <td><span class="badge badge-${i.status}">${i.status}</span></td>
+      <td>${fmtUp(i.uptimeSeconds)}</td>
+      <td title="TTL: ${i.ttl}s">${fmtRem(i.remainingSeconds)}</td>
+      <td>${i.ruleCount}</td>
+      <td title="${esc(ipTitle)}"><span class="clip">${ips.length}</span></td>
+      <td class="acts">
+        <button class="btn btn-g btn-sm" onclick="openPanel('${i.instanceId}')">Rules</button>
+        <button class="btn btn-g btn-sm" onclick="renewInstance('${i.instanceId}')">Renew</button>
+        <button class="btn btn-d btn-sm" onclick="deleteInstance('${i.instanceId}')">Delete</button>
+      </td></tr>`;
+    }).join('');
+  }
+
+  /* pagination */
+  const end=Math.min(start+PG.size,total);
+  document.getElementById('pag').innerHTML=`
+    <div class="pag-l">
+      <span class="pag-info">Showing ${total?start+1:0}–${end} of ${total}</span>
+    </div>
+    <div class="pag-r">
+      <label>Per page</label>
+      <select onchange="setPageSize(+this.value)">
+        ${[10,25,50].map(n=>`<option${n===PG.size?' selected':''}>${n}</option>`).join('')}
+      </select>
+      <button class="btn btn-g btn-sm"${PG.cur<=0?' disabled':''} onclick="setPage(PG.cur-1)">← Prev</button>
+      <span class="pag-info">Page ${PG.cur+1} / ${pages}</span>
+      <button class="btn btn-g btn-sm"${PG.cur>=pages-1?' disabled':''} onclick="setPage(PG.cur+1)">Next →</button>
+    </div>`;
+}
+
+function copyId(id){navigator.clipboard.writeText(id).then(()=>toast('Instance ID copied','info'));}
+
+/* ── panel ─────────────────────────────────────────── */
+async function openPanel(id){
+  S.selId=id;const inst=S.instances.find(x=>x.instanceId===id);
+  document.getElementById('pt').textContent=`Rules — :${inst?.port||'?'}`;
+  document.getElementById('pid').textContent=id;
+  const ips=(inst?.clientIps||[]);
+  document.getElementById('p-clients').textContent=ips.length?'Clients: '+ips.join(', '):'No client connections yet';
+  await fetchRules(id);renderRules();
+  document.getElementById('ov').classList.add('open');document.getElementById('pnl').classList.add('open');
+}
+function closePanel(){S.selId=null;document.getElementById('ov').classList.remove('open');document.getElementById('pnl').classList.remove('open');}
+
+function renderRules(){
+  const el=document.getElementById('rl');
+  if(!S.selRules.length){el.innerHTML='<div class="empty"><p>No rules configured yet</p></div>';return;}
+  el.innerHTML=S.selRules.map(r=>{
+    const mp=[],ap=[];
+    if(r.match?.urlContains)mp.push('URL Contains: <span>'+esc(r.match.urlContains)+'</span>');
+    if(r.match?.urlPattern)mp.push('URL Pattern: <span>'+esc(r.match.urlPattern)+'</span>');
+    if(r.match?.method)mp.push('Method: <span>'+r.match.method+'</span>');
+    if(r.match?.contentType)mp.push('Req CT: <span>'+esc(r.match.contentType)+'</span>');
+    if(r.match?.responseContentType)mp.push('Res CT: <span>'+esc(r.match.responseContentType)+'</span>');
+    const req=r.action?.modifyRequest;
+    if(req){
+      if(req.headers?.set)ap.push('Req Headers+: <span>'+Object.entries(req.headers.set).map(([k,v])=>k+': '+esc(v)).join(', ')+'</span>');
+      if(req.headers?.remove)ap.push('Req Headers−: <span>'+req.headers.remove.join(', ')+'</span>');
+      if(req.params?.set)ap.push('Req Params+: <span>'+Object.entries(req.params.set).map(([k,v])=>k+'='+esc(v)).join(', ')+'</span>');
+      if(req.params?.remove)ap.push('Req Params−: <span>'+req.params.remove.join(', ')+'</span>');
+      if(req.body!=null)ap.push('Req Body: <span>'+esc(req.body.substring(0,80))+(req.body.length>80?'…':'')+'</span>');
+      if(req.bodyFile)ap.push('Req Binary: <span>'+fmtBytes(req.bodyBase64Size)+' (externalized)</span>');
+      else if(req.bodyBase64)ap.push('Req Base64: <span>'+fmtBytes(req.bodyBase64.length*3/4)+' (inline)</span>');
+      if(req.bodyReplace)ap.push('Req Replace: <span>'+esc(req.bodyReplace.from_)+'</span> → <span>'+esc(req.bodyReplace.to)+'</span>');
+    }
+    const res=r.action?.modifyResponse;
+    if(res){
+      if(res.statusCode!=null)ap.push('Status: <span>'+res.statusCode+'</span>');
+      if(res.headers?.set)ap.push('Res Headers+: <span>'+Object.entries(res.headers.set).map(([k,v])=>k+': '+esc(v)).join(', ')+'</span>');
+      if(res.headers?.remove)ap.push('Res Headers−: <span>'+res.headers.remove.join(', ')+'</span>');
+      if(res.body!=null)ap.push('Res Body: <span>'+esc(res.body.substring(0,80))+(res.body.length>80?'…':'')+'</span>');
+      if(res.bodyFile)ap.push('Res Binary: <span>'+fmtBytes(res.bodyBase64Size)+' (externalized)</span>');
+      else if(res.bodyBase64)ap.push('Res Base64: <span>'+fmtBytes(res.bodyBase64.length*3/4)+' (inline)</span>');
+      if(res.bodyReplace)ap.push('Res Replace: <span>'+esc(res.bodyReplace.from_)+'</span> → <span>'+esc(res.bodyReplace.to)+'</span>');
+    }
+    if(r.action?.type==='MODIFY_RESPONSE'&&r.action?.bodyReplace)
+      ap.push('Body Replace: <span>'+esc(r.action.bodyReplace.from_)+'</span> → <span>'+esc(r.action.bodyReplace.to)+'</span>');
+    const msec=mp.length?'<div class="rc-section">Match</div>'+mp.map(p=>'<div class="rc-d">'+p+'</div>').join(''):'';
+    const asec=ap.length?'<div class="rc-section">Actions</div>'+ap.map(p=>'<div class="rc-d">'+p+'</div>').join(''):'';
+    return`<div class="rc"><div class="rc-top"><span class="badge ${r.enabled?'badge-running':'badge-stopped'}">${r.enabled?'Enabled':'Disabled'}</span><div style="display:flex;gap:5px"><button class="btn btn-g btn-sm" onclick="toggleRuleReq('${S.selId}',${r.index})">Toggle</button><button class="btn btn-d btn-sm" onclick="removeRule('${S.selId}',${r.index})">Remove</button></div></div><div class="rc-d">Priority: <span>${r.priority}</span></div>${msec}${asec}</div>`;
+  }).join('');
+}
+
+/* ── form ──────────────────────────────────────────── */
+function parseHeaders(t){if(!t.trim())return null;const o={};t.trim().split('\n').forEach(l=>{const i=l.indexOf(':');if(i>0)o[l.substring(0,i).trim()]=l.substring(i+1).trim();});return Object.keys(o).length?o:null;}
+function parseParams(t){if(!t.trim())return null;const o={};t.trim().split('\n').forEach(l=>{const i=l.indexOf('=');if(i>0)o[l.substring(0,i).trim()]=l.substring(i+1).trim();});return Object.keys(o).length?o:null;}
+function parseList(t){if(!t.trim())return null;const a=t.split(',').map(s=>s.trim()).filter(Boolean);return a.length?a:null;}
+
+function submitRule(e){
+  e.preventDefault();const f=e.target;
+  const rule={enabled:true,priority:parseInt(f.priority.value)||0,match:{},action:{}};
+  if(f.urlContains.value)rule.match.urlContains=f.urlContains.value;
+  if(f.urlPattern.value)rule.match.urlPattern=f.urlPattern.value;
+  if(f.method.value)rule.match.method=f.method.value;
+  if(f.contentType.value)rule.match.contentType=f.contentType.value;
+  if(f.responseContentType.value)rule.match.responseContentType=f.responseContentType.value;
+  const rm={};
+  const rhs=parseHeaders(f.reqHSet.value),rhr=parseList(f.reqHRem.value);
+  if(rhs||rhr){rm.headers={};if(rhs)rm.headers.set=rhs;if(rhr)rm.headers.remove=rhr;}
+  const rps=parseParams(f.reqPSet.value),rpr=parseList(f.reqPRem.value);
+  if(rps||rpr){rm.params={};if(rps)rm.params.set=rps;if(rpr)rm.params.remove=rpr;}
+  if(f.reqBody.value)rm.body=f.reqBody.value;
+  if(f.reqBF.value)rm.bodyReplace={from_:f.reqBF.value,to:f.reqBR.value||''};
+  if(Object.keys(rm).length)rule.action.modifyRequest=rm;
+  const sm={};
+  if(f.resSC.value)sm.statusCode=parseInt(f.resSC.value);
+  const shs=parseHeaders(f.resHSet.value),shr=parseList(f.resHRem.value);
+  if(shs||shr){sm.headers={};if(shs)sm.headers.set=shs;if(shr)sm.headers.remove=shr;}
+  if(f.resBody.value)sm.body=f.resBody.value;
+  if(f.resBF.value)sm.bodyReplace={from_:f.resBF.value,to:f.resBR.value||''};
+  if(Object.keys(sm).length)rule.action.modifyResponse=sm;
+  addRule(S.selId,rule).catch(err=>toast(err.message,'error'));
+  f.reset();f.priority.value='0';
+}
+
+/* ── toast ─────────────────────────────────────────── */
+function toast(m,t){const c=document.getElementById('toasts'),d=document.createElement('div');d.className='toast toast-'+(t||'info');d.textContent=m;c.appendChild(d);setTimeout(()=>d.remove(),3200);}
+
+/* ── keyboard ──────────────────────────────────────── */
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
+
+/* ── boot ──────────────────────────────────────────── */
+fetchAll();setInterval(fetchAll,3000);
+</script>
+</body>
+</html>

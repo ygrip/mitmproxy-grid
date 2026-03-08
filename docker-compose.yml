@@ -1,0 +1,13 @@
+services:
+  mitm-grid:
+    build: ./grid
+    container_name: mitm-grid
+    ports:
+      - "8090:8090"
+      - "10000-10100:10000-10100"
+    volumes:
+      - ./data:/data
+      - ./ca:/ca
+    env_file:
+      - .env
+    restart: unless-stopped

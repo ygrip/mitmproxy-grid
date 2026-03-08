@@ -1,0 +1,20 @@
+# Certificates (per-instance CA keys and certs)
+ca/
+
+# Runtime data (rule files, blobs, logs, client tracking)
+data/
+
+# Scripts
+scripts/
+
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
