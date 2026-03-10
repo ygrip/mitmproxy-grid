@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Any, Optional, List, Dict
 
 
 # ── Shared building blocks ───────────────────────────────────────────────────
@@ -70,8 +70,8 @@ class RequestModification(BaseModel):
     params: Optional[ParamModification] = Field(
         None, description="Query parameter modifications"
     )
-    body: Optional[str] = Field(
-        None, description="Replace the entire request body with this string"
+    body: Optional[Any] = Field(
+        None, description="Replace the entire request body (string or JSON object)"
     )
     bodyBase64: Optional[str] = Field(
         None,
@@ -102,8 +102,8 @@ class ResponseModification(BaseModel):
     headers: Optional[HeaderModification] = Field(
         None, description="Response header modifications"
     )
-    body: Optional[str] = Field(
-        None, description="Replace the entire response body with this string"
+    body: Optional[Any] = Field(
+        None, description="Replace the entire response body (string or JSON object)"
     )
     bodyBase64: Optional[str] = Field(
         None,

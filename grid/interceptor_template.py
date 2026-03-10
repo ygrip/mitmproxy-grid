@@ -154,7 +154,11 @@ def _apply_body(message, mod):
         message.content = base64.b64decode(mod["bodyBase64"])
         return
     if mod.get("body") is not None:
-        message.text = mod["body"]
+        body_val = mod["body"]
+        if isinstance(body_val, (dict, list)):
+            message.text = json.dumps(body_val, ensure_ascii=False)
+        else:
+            message.text = str(body_val)
         return
     repl = mod.get("bodyReplace")
     if not repl:
