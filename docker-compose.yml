@@ -1,13 +1,18 @@
 services:
   mitm-grid:
-    build: ./grid
+    image: ghcr.io/ygrip/mitmproxy-grid:${MITMPROXY_GRID_VERSION:-latest}
     container_name: mitm-grid
     ports:
       - "8090:8090"
       - "10000-10100:10000-10100"
     volumes:
-      - ./data:/data
-      - ./ca:/ca
-    env_file:
-      - .env
+      - mitm-grid-data:/data
+      - mitm-grid-ca:/ca
+    environment:
+      INSTANCE_TTL: ${INSTANCE_TTL:-1800}
+      MAX_BODY_SIZE: ${MAX_BODY_SIZE:-52428800}
     restart: unless-stopped
+
+volumes:
+  mitm-grid-data:
+  mitm-grid-ca:
