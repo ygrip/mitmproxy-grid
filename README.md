@@ -1,6 +1,6 @@
 # mitmproxy Grid
 
-A self-hosted HTTP proxy grid that manages multiple [mitmproxy](https://mitmproxy.org/) instances through a REST API. Spin up isolated proxy instances on demand, define interception rules to modify requests and responses on the fly, and tear them down when you're done — all via a single control plane.
+A self-hosted HTTP proxy grid that manages multiple [mitmproxy](https://mitmproxy.org/) instances through a REST API. Spin up isolated proxy instances on demand, define interception rules to modify requests and responses on the fly, and tear them down when you're done, all via a single control plane.
 
 ## Features
 
@@ -13,54 +13,126 @@ A self-hosted HTTP proxy grid that manages multiple [mitmproxy](https://mitmprox
 - **Client IP tracking** — Tracks unique client IPs connecting through each proxy instance.
 - **Web dashboard** — Built-in HTML dashboard at the root URL for visual instance management.
 - **OpenAPI documentation** — Auto-generated Swagger UI at `/docs` and ReDoc at `/redoc`.
-- **Docker-based deployment** — Single `docker-compose up` to run the entire grid.
+- **GHCR image** — Prebuilt `linux/amd64` and `linux/arm64` images published to GitHub Container Registry.
 
-## Prerequisites
+## Installation
 
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-- `curl` (optional, for health checks and contract generation)
+The published image is:
 
-## Setup
+```text
+ghcr.io/ygrip/mitmproxy-grid:latest
+```
 
-1. **Clone the repository**
+### Run directly with Docker
 
-   ```bash
-   git clone git@github.com-personal:ygrip/mitmproxy-grid.git
-   cd mitmproxy-grid
-   ```
+No repository clone is required:
 
-2. **Configure environment**
+```bash
+docker run -d \
+  --name mitmproxy-grid \
+  --restart unless-stopped \
+  -p 8090:8090 \
+  -p 10000-10100:10000-10100 \
+  -e INSTANCE_TTL=1800 \
+  -e MAX_BODY_SIZE=52428800 \
+  -v mitmproxy-grid-data:/data \
+  -v mitmproxy-grid-ca:/ca \
+  ghcr.io/ygrip/mitmproxy-grid:latest
+```
 
-   ```bash
-   cp .env.example .env
-   ```
+Verify the grid:
 
-   Edit `.env` to adjust settings:
+```bash
+curl http://localhost:8090/health
+```
 
-   | Variable | Default | Description |
-   |---|---|---|
-   | `INSTANCE_TTL` | `1800` | Instance lifespan in seconds (30 min) |
-   | `MAX_BODY_SIZE` | `52428800` | Max decoded body size for base64 payloads (50 MB) |
+Then open:
 
-3. **Start the grid**
+- Dashboard: `http://localhost:8090`
+- Swagger UI: `http://localhost:8090/docs`
+- ReDoc: `http://localhost:8090/redoc`
 
-   ```bash
-   make start
-   ```
+To stop and remove the container while keeping its data volumes:
 
-   This builds the Docker image and starts the container. The API will be available at `http://localhost:8090`.
+```bash
+docker rm -f mitmproxy-grid
+```
 
-4. **Verify it's running**
+### Run with Docker Compose
 
-   ```bash
-   make wait-ready
-   ```
+Clone the repository if you prefer Compose-managed configuration:
 
-   Or manually:
+```bash
+git clone https://github.com/ygrip/mitmproxy-grid.git
+cd mitmproxy-grid
+docker compose up -d
+```
 
-   ```bash
-   curl http://localhost:8090/health
-   ```
+The Compose file pulls `ghcr.io/ygrip/mitmproxy-grid:latest` and creates persistent Docker volumes automatically. No `.env` file is required for the defaults.
+
+To use a specific image version:
+
+```bash
+MITMPROXY_GRID_VERSION=2.1.0 docker compose up -d
+```
+
+Optional runtime configuration:
+
+| Variable | Default | Description |
+|---|---:|---|
+| `INSTANCE_TTL` | `1800` | Default instance lifespan in seconds |
+| `MAX_BODY_SIZE` | `52428800` | Maximum decoded `bodyBase64` payload size in bytes |
+| `MITMPROXY_GRID_VERSION` | `latest` | Image tag used by Docker Compose |
+
+For example:
+
+```bash
+INSTANCE_TTL=3600 MAX_BODY_SIZE=104857600 docker compose up -d
+```
+
+### Private GHCR access
+
+If the package is private, authenticate before pulling it:
+
+```bash
+echo "$GHCR_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+docker pull ghcr.io/ygrip/mitmproxy-grid:latest
+```
+
+The token needs `read:packages`. Public packages can be pulled without authentication.
+
+## Image tags and publishing
+
+GitHub Actions builds the image on pull requests and publishes it to GHCR from `main` and version tags.
+
+Published tags include:
+
+- `latest` for the default branch
+- `main` for the default branch build
+- `sha-<commit>` for commit-addressable builds
+- `2.1.0`, `2.1`, and `2` for a Git tag such as `v2.1.0`
+
+The image is built for both `linux/amd64` and `linux/arm64`.
+
+> **Maintainer note:** GitHub Container Registry packages may initially be private. After the first successful publish, set the package visibility to **Public** if you want users to pull `ghcr.io/ygrip/mitmproxy-grid` without logging in.
+
+## Build locally
+
+To build the image from source instead of using GHCR:
+
+```bash
+git clone https://github.com/ygrip/mitmproxy-grid.git
+cd mitmproxy-grid
+docker build -t mitmproxy-grid:dev ./grid
+```
+
+Or use the Makefile:
+
+```bash
+make build
+```
+
+`make start` pulls the current GHCR image and starts the Compose stack.
 
 ## Usage
 
@@ -70,7 +142,7 @@ A self-hosted HTTP proxy grid that manages multiple [mitmproxy](https://mitmprox
 # 1. Create a proxy instance
 curl -s -X POST http://localhost:8090/instances | python3 -m json.tool
 
-# 2. Add an interception rule (replace INSTANCE_ID and PORT)
+# 2. Add an interception rule (replace INSTANCE_ID)
 curl -s -X POST http://localhost:8090/instances/{INSTANCE_ID}/rules \
   -H "Content-Type: application/json" \
   -d '{
@@ -86,7 +158,7 @@ curl -s -X POST http://localhost:8090/instances/{INSTANCE_ID}/rules \
 # 3. Download the CA certificate for your client
 curl -s http://localhost:8090/instances/{INSTANCE_ID}/cert -o ca.pem
 
-# 4. Route traffic through the proxy
+# 4. Route traffic through the allocated proxy port returned by step 1
 curl -x http://localhost:{PORT} --cacert ca.pem https://example.com/api
 ```
 
@@ -136,10 +208,14 @@ curl -x http://localhost:{PORT} --cacert ca.pem https://example.com/api
 ### Other commands
 
 ```bash
-make stop     # Stop the grid
-make logs     # Follow container logs
-make clean    # Stop and remove volumes
-make contract # Export the OpenAPI spec to openapi.json
+make start      # Pull the GHCR image and start the grid
+make pull       # Pull the configured image
+make build      # Build a local development image
+make stop       # Stop the grid
+make logs       # Follow container logs
+make clean      # Stop and remove Compose volumes
+make wait-ready # Wait until /health reports UP
+make contract   # Export the OpenAPI spec to openapi.json
 ```
 
 ## API Reference
@@ -168,10 +244,12 @@ Full interactive documentation is available at:
 
 ## Project Structure
 
-```
-├── docker-compose.yml    # Container orchestration
+```text
+├── .github/workflows/
+│   └── publish-ghcr.yml  # Multi-arch GHCR build and publish workflow
+├── docker-compose.yml    # Run the published container image
 ├── Makefile              # Convenience commands
-├── .env.example          # Environment variable template
+├── .env.example          # Optional environment defaults
 ├── openapi.json          # Exported OpenAPI contract
 └── grid/
     ├── Dockerfile            # mitmproxy + FastAPI image

@@ -1,9 +1,16 @@
-COMPOSE=docker-compose
+COMPOSE ?= docker compose
+IMAGE ?= ghcr.io/ygrip/mitmproxy-grid
 
-.PHONY: start stop clean logs wait-ready contract
+.PHONY: start pull build stop clean logs wait-ready contract
 
-start:
-	$(COMPOSE) up -d --build
+start: pull
+	$(COMPOSE) up -d
+
+pull:
+	$(COMPOSE) pull
+
+build:
+	docker build -t $(IMAGE):dev ./grid
 
 stop:
 	$(COMPOSE) down
