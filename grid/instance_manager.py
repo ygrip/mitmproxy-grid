@@ -77,7 +77,6 @@ class InstanceManager:
     def __init__(self):
         self.instances: dict[str, Instance] = {}
         self.used_ports: set[int] = set()
-        BASE_LOG.mkdir(parents=True, exist_ok=True)
 
     def _allocate_port(self) -> int:
         for port in range(PORT_START, PORT_END + 1):
@@ -95,6 +94,7 @@ class InstanceManager:
         ca_dir = BASE_CA / instance_id
         log_file = BASE_LOG / f"{instance_id}.log"
 
+        BASE_LOG.mkdir(parents=True, exist_ok=True)
         rule_file.parent.mkdir(parents=True, exist_ok=True)
         ca_dir.mkdir(parents=True, exist_ok=True)
         rule_file.write_text("[]")
