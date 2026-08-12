@@ -2,25 +2,21 @@ import subprocess
 import socket
 import time
 import uuid
-import os
 import logging
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
+
+from config import INSTANCE_TTL, PORT_END, PORT_START
 
 log = logging.getLogger("grid.instance_manager")
 
 BASE_DATA = Path("/data")
 BASE_CA = Path("/ca")
 BASE_LOG = Path("/data/logs")
-PORT_START = 10000
-PORT_END = 10100
-
 STARTUP_TIMEOUT = 30
-INSTANCE_TTL = int(os.environ.get("INSTANCE_TTL", "1800"))
 
 
 def _wait_until_listening(port: int, timeout: int = STARTUP_TIMEOUT) -> bool:
-    """Poll until a TCP port accepts connections."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
@@ -32,14 +28,7 @@ def _wait_until_listening(port: int, timeout: int = STARTUP_TIMEOUT) -> bool:
 
 
 class Instance:
-    def __init__(
-        self,
-        instance_id: str,
-        port: int,
-        process: subprocess.Popen,
-        log_path: Path,
-        ttl: int,
-    ):
+    def __init__(self, instance_id: str, port: int, process: subprocess.Popen, log_path: Path, ttl: int):
         self.instance_id = instance_id
         self.port = port
         self.process = process
@@ -88,7 +77,6 @@ class InstanceManager:
     def __init__(self):
         self.instances: dict[str, Instance] = {}
         self.used_ports: set[int] = set()
-        BASE_LOG.mkdir(parents=True, exist_ok=True)
 
     def _allocate_port(self) -> int:
         for port in range(PORT_START, PORT_END + 1):
@@ -98,7 +86,6 @@ class InstanceManager:
         raise RuntimeError("No free ports available")
 
     def create(self, ttl: int | None = None) -> tuple[str, int, int, str]:
-        """Returns (instance_id, port, effective_ttl, expires_at_iso)."""
         effective_ttl = ttl if ttl is not None else INSTANCE_TTL
         instance_id = str(uuid.uuid4())
         port = self._allocate_port()
@@ -107,6 +94,7 @@ class InstanceManager:
         ca_dir = BASE_CA / instance_id
         log_file = BASE_LOG / f"{instance_id}.log"
 
+        BASE_LOG.mkdir(parents=True, exist_ok=True)
         rule_file.parent.mkdir(parents=True, exist_ok=True)
         ca_dir.mkdir(parents=True, exist_ok=True)
         rule_file.write_text("[]")
@@ -122,9 +110,7 @@ class InstanceManager:
 
         try:
             stderr_fh = open(log_file, "w")
-            process = subprocess.Popen(
-                cmd, stdout=subprocess.DEVNULL, stderr=stderr_fh
-            )
+            process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=stderr_fh)
         except Exception as exc:
             self.used_ports.discard(port)
             raise RuntimeError(f"Failed to start mitmdump: {exc}") from exc
@@ -200,7 +186,6 @@ class InstanceManager:
         return [inst.to_dict() for inst in self.instances.values()]
 
     def reap_expired(self) -> list[str]:
-        """Destroy all expired instances. Returns list of reaped IDs."""
         expired = [iid for iid, inst in self.instances.items() if inst.is_expired]
         for iid in expired:
             log.info("Reaping expired instance %s", iid[:8])

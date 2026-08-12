@@ -2,18 +2,21 @@
 
 FROM mitmproxy/mitmproxy:latest
 
+ARG GRID_VERSION=dev
+ENV GRID_VERSION=${GRID_VERSION} \
+    PYTHONUNBUFFERED=1
+
 LABEL org.opencontainers.image.source="https://github.com/ygrip/mitmproxy-grid" \
       org.opencontainers.image.title="mitmproxy-grid" \
-      org.opencontainers.image.description="Self-hosted mitmproxy instance grid with REST API and dashboard"
+      org.opencontainers.image.description="Self-hosted mitmproxy instance grid with REST API and dashboard" \
+      org.opencontainers.image.version="${GRID_VERSION}"
 
 WORKDIR /app
 
-COPY main.py models.py instance_manager.py rule_registry.py interceptor_template.py dashboard.html ./
+COPY main.py models.py config.py instance_manager.py worker_registry.py rule_registry.py interceptor_template.py dashboard.html ./
 
 RUN pip install --no-cache-dir --disable-pip-version-check fastapi uvicorn \
     && mkdir -p /data /ca
-
-ENV PYTHONUNBUFFERED=1
 
 VOLUME ["/data", "/ca"]
 

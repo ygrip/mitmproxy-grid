@@ -1,0 +1,34 @@
+services:
+  mitm-coordinator:
+    image: ghcr.io/ygrip/mitmproxy-grid:${MITMPROXY_GRID_VERSION:-2.1.0}
+    environment:
+      GRID_MODE: coordinator
+      INSTANCE_TTL: ${INSTANCE_TTL:-1800}
+      WORKER_REGISTER_INTERVAL: ${WORKER_REGISTER_INTERVAL:-5}
+      WORKER_STALE_AFTER: ${WORKER_STALE_AFTER:-20}
+    ports:
+      - "${MITMPROXY_GRID_API_PORT:-8090}:8090"
+    networks:
+      - automation
+    restart: unless-stopped
+
+  mitm-worker:
+    image: ghcr.io/ygrip/mitmproxy-grid:${MITMPROXY_GRID_VERSION:-2.1.0}
+    environment:
+      GRID_MODE: worker
+      COORDINATOR_URL: http://mitm-coordinator:8090
+      PORT_START: ${PORT_START:-10000}
+      PORT_END: ${PORT_END:-10009}
+      INSTANCE_TTL: ${INSTANCE_TTL:-1800}
+      MAX_BODY_SIZE: ${MAX_BODY_SIZE:-52428800}
+      WORKER_REGISTER_INTERVAL: ${WORKER_REGISTER_INTERVAL:-5}
+    depends_on:
+      - mitm-coordinator
+    networks:
+      - automation
+    restart: unless-stopped
+
+networks:
+  automation:
+    name: ${AUTOMATION_NETWORK:-selenium-grid}
+    external: true
